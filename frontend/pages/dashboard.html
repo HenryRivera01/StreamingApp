@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body class="dark">
+    <div class="app-layout" id="app">
+      <aside class="sidebar">
+        <div class="sidebar-logo">Streaming</div>
+        <nav class="sidebar-nav">
+          <a href="./dashboard.html" class="active">Inicio</a>
+          <a href="./profile.html">Perfil</a>
+          <a href="./player.html">Reproductor</a>
+          <a href="./admin.html" id="linkAdmin" style="display: none">Admin</a>
+        </nav>
+      </aside>
+      <main class="main">
+        <header class="navbar">
+          <div>
+            <h1>Tu catálogo</h1>
+            <p style="color: #9ca3af; font-size: 0.9rem">
+              Explora tu contenido favorito en un solo lugar.
+            </p>
+          </div>
+          <div class="navbar-actions">
+            <input
+              id="catalogSearch"
+              class="input catalog-search"
+              type="search"
+              placeholder="Buscar películas y series"
+            />
+            <span id="userEmail" class="chip"></span>
+            <button class="btn" id="btnLogout">Salir</button>
+          </div>
+        </header>
+
+        <section id="rows"></section>
+      </main>
+    </div>
+    <script src="../js/layout.js"></script>
+    <script src="../js/dashboard.js"></script>
+  </body>
+</html>

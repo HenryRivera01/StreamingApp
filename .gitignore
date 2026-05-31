@@ -1,0 +1,11 @@
+# Dependencias
+streaming-platform/backend/node_modules/
+streaming-platform/backend/streaming-platform/backend/node_modules/
+
+# Media local
+streaming-platform/backend/backend/media/
+frontend/assets/thumbnails/
+
+# Opcional: archivos grandes de video
+*.mp4
+.env

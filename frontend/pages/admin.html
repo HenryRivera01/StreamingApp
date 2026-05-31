@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Dashboard</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+
+  <body class="dark">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="sidebar-logo">Admin</div>
+        <nav class="sidebar-nav">
+          <a href="./dashboard.html">Inicio</a>
+          <a href="./admin.html" class="active">Dashboard admin</a>
+          <a href="./users.html">Usuarios</a>
+          <a href="./analytics.html">Consultas</a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="navbar">
+          <h1>Panel administrador</h1>
+          <button id="btnLogout" class="btn">Salir</button>
+        </header>
+
+        <!-- Métricas, contenido más visto, actividad reciente -->
+        <section class="grid-two" id="adminDashboard"></section>
+
+        <!-- Subir nueva película -->
+        <section class="panel panel-spacing">
+          <h3>Subir nueva película</h3>
+          <form id="uploadForm" enctype="multipart/form-data">
+            <div class="field">
+              <label for="titulo">Título</label>
+              <input
+                id="titulo"
+                name="titulo"
+                type="text"
+                class="input"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="anio">Año (opcional)</label>
+              <input id="anio" name="anio" type="number" class="input" />
+            </div>
+
+            <div class="field">
+              <label for="sinopsis">Sinopsis (opcional)</label>
+              <textarea
+                id="sinopsis"
+                name="sinopsis"
+                rows="3"
+                class="input"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="duracionMinutosMovie"
+                >Duración (minutos, opcional)</label
+              >
+              <input
+                id="duracionMinutosMovie"
+                name="duracion_minutos"
+                type="number"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="clasificacion"
+                >Clasificación de edad (opcional)</label
+              >
+              <input
+                id="clasificacion"
+                name="clasificacion"
+                type="text"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="idioma">Idioma original (opcional)</label>
+              <input id="idioma" name="idioma" type="text" class="input" />
+            </div>
+
+            <hr class="hr-soft" />
+
+            <div class="field">
+              <label>Distribuidor</label>
+              <select
+                id="distribuidorSelect"
+                name="distribuidor_id"
+                class="input"
+              >
+                <option value="">(Selecciona uno existente)</option>
+              </select>
+              <small class="help-text">O escribe uno nuevo:</small>
+              <input
+                id="distribuidorNuevo"
+                name="distribuidor_nuevo"
+                type="text"
+                class="input"
+                placeholder="Nuevo distribuidor"
+              />
+            </div>
+
+            <div class="field">
+              <label>Géneros</label>
+              <select
+                id="generosSelect"
+                class="input"
+                multiple
+                size="4"
+              ></select>
+              <small class="help-text"
+                >Ctrl/Cmd + clic para seleccionar varios.</small
+              >
+              <div class="field-inline">
+                <label for="generoPrincipal">Género principal</label>
+                <select id="generoPrincipal" class="input">
+                  <option value="">(Opcional)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="participantes"
+                >Participantes (uno por línea, formato: Nombre|Rol o
+                Nombre|Rol|Pais|FechaNacimiento)</label
+              >
+              <textarea
+                id="participantes"
+                name="participantes_text"
+                rows="5"
+                class="input"
+                placeholder="Ejemplo:
+Christopher Nolan|Director|Reino Unido|1970-07-30
+Matthew McConaughey|Actor|Estados Unidos|1969-11-04"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="file">Archivo de video (.mp4)</label>
+              <input
+                id="file"
+                name="file"
+                type="file"
+                accept="video/mp4"
+                class="input"
+                required
+              />
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn primary btn-full">
+                Subir película
+              </button>
+              <span id="uploadMsg" class="status-text"></span>
+            </div>
+          </form>
+        </section>
+
+        <!-- Subir episodio de serie -->
+        <section class="panel panel-spacing">
+          <h3>Subir episodio de serie</h3>
+          <form id="uploadSeriesForm" enctype="multipart/form-data">
+            <h4 class="form-subtitle">Serie</h4>
+
+            <div class="field">
+              <label>Serie existente</label>
+              <select id="serieSelect" name="serie_id" class="input">
+                <option value="">(Selecciona una serie)</option>
+              </select>
+              <small class="help-text">O crea una nueva:</small>
+              <input
+                id="serieTitulo"
+                name="serie_titulo"
+                type="text"
+                class="input"
+                placeholder="Título serie nueva"
+              />
+            </div>
+
+            <div class="field">
+              <label for="serieSinopsis">Sinopsis serie (opcional)</label>
+              <textarea
+                id="serieSinopsis"
+                name="serie_sinopsis"
+                rows="2"
+                class="input"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="serieAnio">Año inicio emisión (opcional)</label>
+              <input
+                id="serieAnio"
+                name="serie_anio_inicio"
+                type="number"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="serieNumeroTemporadas">Número de temporadas</label>
+              <input
+                id="serieNumeroTemporadas"
+                name="serie_numero_temporadas"
+                type="number"
+                class="input"
+                value="1"
+              />
+            </div>
+
+            <div class="field">
+              <label for="serieClasificacion"
+                >Clasificación edad serie (opcional)</label
+              >
+              <input
+                id="serieClasificacion"
+                name="serie_clasificacion"
+                type="text"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="serieEstado">Estado de la serie</label>
+              <select id="serieEstado" name="serie_estado" class="input">
+                <option value="EN_EMISION">EN_EMISION</option>
+                <option value="FINALIZADA">FINALIZADA</option>
+              </select>
+            </div>
+
+            <hr class="hr-soft" />
+
+            <h4 class="form-subtitle">Temporada</h4>
+
+            <div class="field">
+              <label for="numeroTemporada">Número de temporada</label>
+              <input
+                id="numeroTemporada"
+                name="numero_temporada"
+                type="number"
+                class="input"
+                value="1"
+              />
+            </div>
+
+            <div class="field">
+              <label for="anioTemp">Año lanzamiento temporada (opcional)</label>
+              <input
+                id="anioTemp"
+                name="anio_lanzamiento_temp"
+                type="number"
+                class="input"
+              />
+            </div>
+
+            <hr class="hr-soft" />
+
+            <h4 class="form-subtitle">Episodio</h4>
+
+            <div class="field">
+              <label for="episodioTitulo">Título episodio</label>
+              <input
+                id="episodioTitulo"
+                name="episodio_titulo"
+                type="text"
+                class="input"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="numeroEpisodio">Número de episodio</label>
+              <input
+                id="numeroEpisodio"
+                name="numero_episodio"
+                type="number"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="duracionMinutos">Duración (minutos, opcional)</label>
+              <input
+                id="duracionMinutos"
+                name="duracion_minutos"
+                type="number"
+                class="input"
+              />
+            </div>
+
+            <div class="field">
+              <label for="episodioSinopsis">Sinopsis episodio (opcional)</label>
+              <textarea
+                id="episodioSinopsis"
+                name="episodio_sinopsis"
+                rows="2"
+                class="input"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label>Géneros</label>
+              <select
+                id="generosSeriesSelect"
+                class="input"
+                multiple
+                size="4"
+              ></select>
+              <small class="help-text">Ctrl/Cmd + clic para varios.</small>
+              <div class="field-inline">
+                <label for="generoPrincipalSerie">Género principal</label>
+                <select id="generoPrincipalSerie" class="input">
+                  <option value="">(Opcional)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="participantesSerie"
+                >Participantes (uno por línea, Nombre|Rol o
+                Nombre|Rol|Pais|FechaNacimiento)</label
+              >
+              <textarea
+                id="participantesSerie"
+                name="participantes_text"
+                rows="5"
+                class="input"
+                placeholder="Ejemplo:
+Baran bo Odar|Director|Suiza|1978-04-18
+Louis Hofmann|Actor|Alemania|1997-06-03"
+              ></textarea>
+            </div>
+
+            <div class="field">
+              <label for="fileSerie">Archivo de video (.mp4)</label>
+              <input
+                id="fileSerie"
+                name="file"
+                type="file"
+                accept="video/mp4"
+                class="input"
+                required
+              />
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn primary btn-full">
+                Subir episodio
+              </button>
+              <span id="uploadSeriesMsg" class="status-text"></span>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="../js/layout.js"></script>
+    <script src="../js/adminDashboard.js"></script>
+  </body>
+</html>

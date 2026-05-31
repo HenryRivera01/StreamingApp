@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin - Consultas</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body class="dark">
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="sidebar-logo">Admin</div>
+        <nav class="sidebar-nav">
+          <a href="./dashboard.html">Inicio</a>
+          <a href="./admin.html">Dashboard admin</a>
+          <a href="./users.html">Usuarios</a>
+          <a href="./analytics.html" class="active">Consultas</a>
+        </nav>
+      </aside>
+      <main class="main">
+        <header class="navbar">
+          <h1>Consultas Neo4j</h1>
+          <button id="btnLogout" class="btn">Salir</button>
+        </header>
+        <section class="panel">
+          <h3>Resultados</h3>
+          <div
+            id="results"
+            style="max-height: 540px; overflow: auto; font-size: 0.8rem"
+          ></div>
+        </section>
+      </main>
+    </div>
+    <script src="../js/layout.js"></script>
+    <script src="../js/adminAnalytics.js"></script>
+  </body>
+</html>

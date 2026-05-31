@@ -1,0 +1,30 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Iniciar sesión</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body class="dark">
+  <div class="form-card">
+    <h1>Bienvenido</h1>
+    <p class="subtitle">Inicia sesión para acceder a tu catálogo.</p>
+    <div class="field">
+      <label for="correo">Correo</label>
+      <input id="correo" type="email" class="input" />
+    </div>
+    <div class="field">
+      <label for="contrasena">Contraseña</label>
+      <input id="contrasena" type="password" class="input" />
+    </div>
+    <div class="actions">
+      <button id="btnLogin" class="btn primary" style="width:100%">Iniciar sesión</button>
+    </div>
+    <p style="margin-top:10px;font-size:0.85rem;color:#9ca3af;">¿No tienes cuenta? <a class="text-link" href="./register.html">Regístrate</a></p>
+    <p id="error" style="margin-top:10px;color:#f97373;font-size:0.85rem;"></p>
+  </div>
+  <script src="../js/auth.js"></script>
+</body>
+</html>

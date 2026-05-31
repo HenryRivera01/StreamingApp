@@ -1,0 +1,417 @@
+const API_BASE = '/api';
+
+function getAuth() {
+  const raw = localStorage.getItem('auth');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function requireAdmin() {
+  const auth = getAuth();
+  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') {
+    window.location.href = './dashboard.html';
+    return null;
+  }
+  return auth;
+}
+
+function logout() {
+  localStorage.removeItem('auth');
+  window.location.href = './login.html';
+}
+
+async function loadAdminDashboard() {
+  const auth = requireAdmin();
+  if (!auth) return;
+
+  if (document.getElementById('btnLogout')) {
+    document.getElementById('btnLogout').addEventListener('click', logout);
+  }
+
+  const container = document.getElementById('adminDashboard');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/admin/dashboard`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      container.innerHTML = '<div class="panel"><p>Error cargando dashboard admin</p></div>';
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="panel">
+        <h3>Métricas generales</h3>
+        <p>Total usuarios: <strong>${data.total_usuarios}</strong></p>
+        <p>Total películas: <strong>${data.total_peliculas}</strong></p>
+        <p>Total series: <strong>${data.total_series}</strong></p>
+      </div>
+      <div class="panel">
+        <h3>Contenido más visto</h3>
+        <p class="chip">Películas</p>
+        <ul class="list-compact">
+          ${
+            (data.mas_visto_peliculas || [])
+              .map(
+                (p) =>
+                  `<li>${p.titulo} · ${p.reproducciones} reproducciones</li>`
+              )
+              .join('') || '<li>Sin datos</li>'
+          }
+        </ul>
+        <p class="chip">Episodios</p>
+        <ul class="list-compact">
+          ${
+            (data.mas_visto_episodios || [])
+              .map(
+                (e) =>
+                  `<li>${e.titulo} · ${e.reproducciones} reproducciones</li>`
+              )
+              .join('') || '<li>Sin datos</li>'
+          }
+        </ul>
+      </div>
+      <div class="panel" style="grid-column:1 / -1;">
+        <h3>Actividad reciente</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Fecha</th>
+              <th>Tiempo (min)</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              (data.actividad_reciente || [])
+                .map(
+                  (a) => `
+              <tr>
+                <td>${a.correo || ''}</td>
+                <td>${a.fecha_reproduccion || ''}</td>
+                <td>${a.tiempo_reproducido || ''}</td>
+                <td>${a.tipo_estado || ''}</td>
+              </tr>`
+                )
+                .join('') || `
+              <tr>
+                <td colspan="4">Sin actividad reciente</td>
+              </tr>`
+            }
+          </tbody>
+        </table>
+      </div>
+    `;
+  } catch (err) {
+    console.error(err);
+    container.innerHTML =
+      '<div class="panel"><p>Error de red cargando dashboard admin</p></div>';
+  }
+}
+
+// Cargar distribuidores, géneros y series para los formularios
+async function loadUploadFormOptions() {
+  const auth = getAuth();
+  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/media/upload-form-data`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.error('Error cargando catálogos de upload', data);
+    return;
+  }
+
+  const distSelect = document.getElementById('distribuidorSelect');
+  const generosSelect = document.getElementById('generosSelect');
+  const generoPrincipalSelect = document.getElementById('generoPrincipal');
+  const serieSelect = document.getElementById('serieSelect');
+  const generosSeriesSelect = document.getElementById('generosSeriesSelect');
+  const generoPrincipalSerieSelect = document.getElementById('generoPrincipalSerie');
+
+  if (distSelect && data.distribuidores) {
+    data.distribuidores.forEach((d) => {
+      const opt = document.createElement('option');
+      opt.value = d.id_distribuidor;
+      opt.textContent = d.nombre;
+      distSelect.appendChild(opt);
+    });
+  }
+
+  if (generosSelect && generoPrincipalSelect && data.generos) {
+    data.generos.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.id_genero;
+      opt.textContent = g.nombre_genero;
+      generosSelect.appendChild(opt);
+
+      const opt2 = opt.cloneNode(true);
+      generoPrincipalSelect.appendChild(opt2);
+    });
+  }
+
+  if (serieSelect && data.series) {
+    data.series.forEach((s) => {
+      const opt = document.createElement('option');
+      opt.value = s.id_serie;
+      opt.textContent = s.titulo;
+      serieSelect.appendChild(opt);
+    });
+  }
+
+  if (generosSeriesSelect && generoPrincipalSerieSelect && data.generos) {
+    data.generos.forEach((g) => {
+      const opt = document.createElement('option');
+      opt.value = g.id_genero;
+      opt.textContent = g.nombre_genero;
+      generosSeriesSelect.appendChild(opt);
+
+      const opt2 = opt.cloneNode(true);
+      generoPrincipalSerieSelect.appendChild(opt2);
+    });
+  }
+}
+
+// Subida de películas
+function initUploadForm() {
+  const auth = getAuth();
+  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+
+  const form = document.getElementById('uploadForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('uploadMsg');
+    msg.textContent = 'Subiendo...';
+    msg.classList.remove('status-error', 'status-success');
+
+    const formData = new FormData();
+
+    formData.append('titulo', document.getElementById('titulo').value);
+    formData.append('anio', document.getElementById('anio').value);
+    formData.append('sinopsis', document.getElementById('sinopsis').value);
+    formData.append(
+      'duracion_minutos',
+      document.getElementById('duracionMinutosMovie').value
+    );
+    formData.append('clasificacion', document.getElementById('clasificacion').value);
+    formData.append('idioma', document.getElementById('idioma').value);
+
+    const distSelect = document.getElementById('distribuidorSelect');
+    const distNuevo = document.getElementById('distribuidorNuevo').value;
+    if (distSelect && distSelect.value) {
+      formData.append('distribuidor_id', distSelect.value);
+    }
+    if (distNuevo) {
+      formData.append('distribuidor_nuevo', distNuevo);
+    }
+
+    const generosSelect = document.getElementById('generosSelect');
+    if (generosSelect) {
+      const selectedGeneros = Array.from(generosSelect.selectedOptions).map(
+        (o) => o.value
+      );
+      if (selectedGeneros.length) {
+        formData.append('generos_ids', selectedGeneros.join(','));
+      }
+    }
+
+    const generoPrincipal = document.getElementById('generoPrincipal').value;
+    if (generoPrincipal) {
+      formData.append('genero_principal_id', generoPrincipal);
+    }
+
+    formData.append(
+      'participantes_text',
+      document.getElementById('participantes').value
+    );
+
+    const fileInput = document.getElementById('file');
+    if (!fileInput || fileInput.files.length === 0) {
+      msg.textContent = 'Selecciona un archivo .mp4';
+      msg.classList.add('status-error');
+      return;
+    }
+    formData.append('file', fileInput.files[0]);
+
+    try {
+      const res = await fetch(`${API_BASE}/media/upload-movie`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.message || 'Error subiendo película';
+        msg.classList.add('status-error');
+        return;
+      }
+      msg.textContent = 'Película subida con toda la metadata';
+      msg.classList.add('status-success');
+      form.reset();
+      loadAdminDashboard();
+      loadUploadFormOptions();
+    } catch (err) {
+      console.error(err);
+      msg.textContent = 'Error de red';
+      msg.classList.add('status-error');
+    }
+  });
+}
+
+// Subida de episodios de series
+function initUploadSeriesForm() {
+  const auth = getAuth();
+  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+
+  const form = document.getElementById('uploadSeriesForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('uploadSeriesMsg');
+    msg.textContent = 'Subiendo episodio...';
+    msg.classList.remove('status-error', 'status-success');
+
+    const fd = new FormData();
+
+    // Serie
+    fd.append('serie_id', document.getElementById('serieSelect').value);
+    fd.append('serie_titulo', document.getElementById('serieTitulo').value);
+    fd.append('serie_sinopsis', document.getElementById('serieSinopsis').value);
+    fd.append('serie_anio_inicio', document.getElementById('serieAnio').value);
+    fd.append(
+      'serie_numero_temporadas',
+      document.getElementById('serieNumeroTemporadas').value
+    );
+    fd.append(
+      'serie_clasificacion',
+      document.getElementById('serieClasificacion').value
+    );
+    fd.append(
+      'serie_estado',
+      document.getElementById('serieEstado').value
+    );
+
+    // Temporada
+    fd.append(
+      'numero_temporada',
+      document.getElementById('numeroTemporada').value
+    );
+    fd.append(
+      'anio_lanzamiento_temp',
+      document.getElementById('anioTemp').value
+    );
+
+    // Episodio
+    fd.append(
+      'episodio_titulo',
+      document.getElementById('episodioTitulo').value
+    );
+    fd.append(
+      'numero_episodio',
+      document.getElementById('numeroEpisodio').value
+    );
+    fd.append(
+      'duracion_minutos',
+      document.getElementById('duracionMinutos').value
+    );
+    fd.append(
+      'episodio_sinopsis',
+      document.getElementById('episodioSinopsis').value
+    );
+
+    // Distribuidor (reutiliza los campos de película)
+    const distSelect = document.getElementById('distribuidorSelect');
+    const distNuevo = document.getElementById('distribuidorNuevo').value;
+    if (distSelect && distSelect.value) {
+      fd.append('distribuidor_id', distSelect.value);
+    }
+    if (distNuevo) {
+      fd.append('distribuidor_nuevo', distNuevo);
+    }
+
+    // Géneros
+    const generosSeriesSelect = document.getElementById('generosSeriesSelect');
+    if (generosSeriesSelect) {
+      const selectedG = Array.from(generosSeriesSelect.selectedOptions).map(
+        (o) => o.value
+      );
+      if (selectedG.length) {
+        fd.append('generos_ids', selectedG.join(','));
+      }
+    }
+
+    const generoPrincipalSerie =
+      document.getElementById('generoPrincipalSerie').value;
+    if (generoPrincipalSerie) {
+      fd.append('genero_principal_id', generoPrincipalSerie);
+    }
+
+    // Participantes
+    fd.append(
+      'participantes_text',
+      document.getElementById('participantesSerie').value
+    );
+
+    // Archivo
+    const fileInput = document.getElementById('fileSerie');
+    if (!fileInput || !fileInput.files.length) {
+      msg.textContent = 'Selecciona un archivo .mp4';
+      msg.classList.add('status-error');
+      return;
+    }
+    fd.append('file', fileInput.files[0]);
+
+    try {
+      const res = await fetch(`${API_BASE}/media/upload-series-episode`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+        },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.message || 'Error subiendo episodio';
+        msg.classList.add('status-error');
+        return;
+      }
+      msg.textContent = 'Episodio subido correctamente';
+      msg.classList.add('status-success');
+      form.reset();
+      loadAdminDashboard();
+      loadUploadFormOptions();
+    } catch (err) {
+      console.error(err);
+      msg.textContent = 'Error de red';
+      msg.classList.add('status-error');
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadAdminDashboard();
+  loadUploadFormOptions();
+  initUploadForm();
+  initUploadSeriesForm();
+});
+//window.addEventListener('DOMContentLoaded', loadAdminDashboard);

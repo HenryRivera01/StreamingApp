@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reproductor</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body class="dark">
+    <div class="player-header">
+      <div>
+        <a href="./dashboard.html" class="text-link">← Volver</a>
+        <h2 id="playerTitle">Reproduciendo</h2>
+      </div>
+      <button id="btnLogout" class="btn">Salir</button>
+    </div>
+    <section class="player-hero">
+      <img
+        id="thumbnailPreview"
+        class="thumbnail-preview"
+        alt="Miniatura del contenido"
+      />
+      <div class="player-hero-copy">
+        <p id="playerMeta" class="player-meta"></p>
+        <p id="ratingSummary" class="rating-summary"></p>
+        <div id="ratingControls" class="rating-controls"></div>
+      </div>
+    </section>
+    <div class="video-container">
+      <video id="video" controls preload="metadata"></video>
+    </div>
+    <script src="../js/player.js"></script>
+  </body>
+</html>
