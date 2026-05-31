@@ -62,7 +62,34 @@ async function getAllMovies() {
       `,
     );
 
-    return rows.map((r) => r.movie);
+    // Si Neo4j no provee thumbnail_url (seed demo), intentar inferir desde
+    // frontend/assets/thumbnails buscando archivos con prefijo pelicula_{id}_
+    const thumbsDir = path.join(
+      __dirname,
+      "..",
+      "..",
+      "frontend",
+      "assets",
+      "thumbnails",
+    );
+
+    return rows.map((r) => {
+      const movie = r.movie;
+      if (!movie.thumbnail_url) {
+        try {
+          if (fs.existsSync(thumbsDir)) {
+            const files = fs.readdirSync(thumbsDir);
+            const match = files.find((f) =>
+              f.startsWith(`pelicula_${movie.id_pelicula}_`),
+            );
+            if (match) movie.thumbnail_url = `/assets/thumbnails/${match}`;
+          }
+        } catch (e) {
+          // ignore filesystem errors
+        }
+      }
+      return movie;
+    });
   }
 
   const { rows } = await pool.query(
@@ -158,7 +185,29 @@ async function getMovieById(id) {
       { id: Number(id) },
     );
 
-    return rows[0] ? rows[0].movie : undefined;
+    const movie = rows[0] ? rows[0].movie : undefined;
+    if (movie && !movie.thumbnail_url) {
+      try {
+        const thumbsDir = path.join(
+          __dirname,
+          "..",
+          "..",
+          "frontend",
+          "assets",
+          "thumbnails",
+        );
+        if (fs.existsSync(thumbsDir)) {
+          const files = fs.readdirSync(thumbsDir);
+          const match = files.find((f) =>
+            f.startsWith(`pelicula_${movie.id_pelicula}_`),
+          );
+          if (match) movie.thumbnail_url = `/assets/thumbnails/${match}`;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return movie;
   }
 
   const { rows } = await pool.query(
@@ -218,7 +267,29 @@ async function getEpisodeById(id) {
       { id: Number(id) },
     );
 
-    return rows[0] ? rows[0].episode : undefined;
+    const episode = rows[0] ? rows[0].episode : undefined;
+    if (episode && !episode.thumbnail_url) {
+      try {
+        const thumbsDir = path.join(
+          __dirname,
+          "..",
+          "..",
+          "frontend",
+          "assets",
+          "thumbnails",
+        );
+        if (fs.existsSync(thumbsDir)) {
+          const files = fs.readdirSync(thumbsDir);
+          const match = files.find((f) =>
+            f.startsWith(`episodio_${episode.id_episodio}_`),
+          );
+          if (match) episode.thumbnail_url = `/assets/thumbnails/${match}`;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return episode;
   }
 
   const { rows } = await pool.query(
@@ -256,7 +327,31 @@ async function getEpisodesBySeries(seriesId) {
       { seriesId: Number(seriesId) },
     );
 
-    return rows.map((r) => r.episode);
+    const thumbsDir = path.join(
+      __dirname,
+      "..",
+      "..",
+      "frontend",
+      "assets",
+      "thumbnails",
+    );
+    return rows.map((r) => {
+      const episode = r.episode;
+      if (!episode.thumbnail_url) {
+        try {
+          if (fs.existsSync(thumbsDir)) {
+            const files = fs.readdirSync(thumbsDir);
+            const match = files.find((f) =>
+              f.startsWith(`episodio_${episode.id_episodio}_`),
+            );
+            if (match) episode.thumbnail_url = `/assets/thumbnails/${match}`;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+      return episode;
+    });
   }
 
   const { rows } = await pool.query(

@@ -408,43 +408,36 @@ video {
 }
 
 .player-hero {
-  max-width: 960px;
-  margin: 0 auto;
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(220px, 280px) 1fr;
-  align-items: stretch;
+  max-width: 1200px;
+  margin: 0 auto 18px;
+  position: relative;
   padding: 0 18px;
 }
 
-.thumbnail-preview {
-  width: 100%;
-  min-height: 180px;
-  border-radius: 18px;
-  object-fit: cover;
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.95),
-    rgba(17, 24, 39, 0.8)
-  );
+.hero-backdrop {
+  height: 360px;
+  border-radius: 14px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
   box-shadow: var(--shadow-soft);
-  opacity: 0.55;
 }
 
-.thumbnail-preview.is-ready {
-  opacity: 1;
+.hero-overlay {
+  position: absolute;
+  left: 28px;
+  bottom: 18px;
+  color: var(--text);
+  z-index: 2;
+  max-width: 70%;
+  text-shadow: 0 6px 18px rgba(0,0,0,0.7);
 }
 
-.player-hero-copy {
-  padding: 18px 20px;
-  border-radius: 18px;
-  background: linear-gradient(
-    180deg,
-    rgba(15, 23, 42, 0.9),
-    rgba(2, 6, 23, 0.92)
-  );
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: var(--shadow-soft);
+.hero-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.65) 60%);
 }
 
 .player-meta {
@@ -555,6 +548,41 @@ video {
 
 .panel-spacing {
   margin-top: 20px;
+}
+
+/* Series page specific */
+.series-hero {
+  height: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+.series-hero .hero-overlay {
+  position: absolute;
+  left: 20px;
+  bottom: 16px;
+  color: var(--text);
+  z-index: 2;
+  max-width: 60%;
+  text-shadow: 0 6px 18px rgba(0,0,0,0.6);
+}
+.series-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 18px;
+}
+.series-controls select {
+  width: auto;
+  min-width: 140px;
+}
+.episodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
 }
 
 .hr-soft {

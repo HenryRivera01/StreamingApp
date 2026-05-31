@@ -481,6 +481,51 @@ router.post(
         }
       }
 
+      // Intentar generar miniatura para episodio y, si la serie no tiene miniatura,
+      // usar este fotograma como miniatura de la serie (SQL branch)
+      try {
+        const thumbFileName = `episodio_${idEpisodio}_${Date.now()}.jpg`;
+        const thumbAbsPath = path.join(thumbsDir, thumbFileName);
+        await generateThumbnail(req.file.path, thumbAbsPath, 1);
+        const thumbUrl = `/assets/thumbnails/${thumbFileName}`;
+        // Intentar actualizar columna thumbnail_url en episodio (si existe)
+        try {
+          await client.query(
+            `UPDATE episodio SET thumbnail_url = $1 WHERE id_episodio = $2`,
+            [thumbUrl, idEpisodio],
+          );
+        } catch (updErr) {
+          // columna puede no existir, ignorar
+        }
+
+        // Si la serie no tiene miniatura, intentar actualizarla
+        try {
+          const sres = await client.query(
+            `SELECT thumbnail_url FROM serie WHERE id_serie = $1 LIMIT 1`,
+            [idSerie],
+          );
+          const existing = sres.rows[0] && sres.rows[0].thumbnail_url;
+          if (!existing) {
+            const seriesThumbName = `serie_${idSerie}_${Date.now()}.jpg`;
+            const seriesThumbAbs = path.join(thumbsDir, seriesThumbName);
+            fs.copyFileSync(thumbAbsPath, seriesThumbAbs);
+            const seriesThumbUrl = `/assets/thumbnails/${seriesThumbName}`;
+            try {
+              await client.query(
+                `UPDATE serie SET thumbnail_url = $1 WHERE id_serie = $2`,
+                [seriesThumbUrl, idSerie],
+              );
+            } catch (upd2Err) {
+              // columna puede no existir
+            }
+          }
+        } catch (chkErr) {
+          console.warn('Error chequeando/guardando thumbnail de serie en SQL:', chkErr.message);
+        }
+      } catch (genErr) {
+        console.warn('No se pudo generar miniatura para episodio (SQL branch):', genErr.message);
+      }
+
       await client.query('COMMIT');
 
       return res.status(201).json({
@@ -784,8 +829,9 @@ const uploadMovie = multer({
   storage: storageMovies,
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ext !== ".mp4") {
-      return cb(new Error("Solo se permiten archivos .mp4"));
+    const allowed = [".mp4", ".mkv", ".webm"];
+    if (!allowed.includes(ext)) {
+      return cb(new Error("Extensión no permitida. Use mp4, mkv o webm"));
     }
     cb(null, true);
   },
@@ -819,8 +865,9 @@ const uploadSeries = multer({
   storage: storageSeries,
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (ext !== ".mp4") {
-      return cb(new Error("Solo se permiten archivos .mp4"));
+    const allowed = [".mp4", ".mkv", ".webm"];
+    if (!allowed.includes(ext)) {
+      return cb(new Error("Extensión no permitida. Use mp4, mkv o webm"));
     }
     cb(null, true);
   },
@@ -855,6 +902,22 @@ router.post(
 
       if (!titulo || !titulo.trim()) {
         return res.status(400).json({ message: "Título requerido" });
+      }
+
+      // Validaciones adicionales
+      if (anio && (!Number.isInteger(Number(anio)) || Number(anio) < 1888)) {
+        return res
+          .status(400)
+          .json({ message: "Año inválido. Debe ser entero >= 1888" });
+      }
+      if (
+        duracion_minutos &&
+        (!Number.isFinite(Number(duracion_minutos)) ||
+          Number(duracion_minutos) <= 0)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Duración inválida. Debe ser mayor que 0" });
       }
 
       if (isNeo4jUploadsEnabled()) {
@@ -1196,6 +1259,41 @@ router.post(
           .json({ message: "Título del episodio requerido" });
       }
 
+      // Validaciones adicionales para episodios/series
+      if (
+        numero_temporada &&
+        (!Number.isInteger(Number(numero_temporada)) ||
+          Number(numero_temporada) <= 0)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Número de temporada inválido" });
+      }
+      if (
+        numero_episodio &&
+        (!Number.isInteger(Number(numero_episodio)) ||
+          Number(numero_episodio) <= 0)
+      ) {
+        return res.status(400).json({ message: "Número de episodio inválido" });
+      }
+      if (
+        duracion_minutos &&
+        (!Number.isFinite(Number(duracion_minutos)) ||
+          Number(duracion_minutos) <= 0)
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Duración inválida. Debe ser mayor que 0" });
+      }
+      if (!serie_id && (!serie_titulo || !serie_titulo.trim())) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Debe indicar una serie existente o el título de una nueva",
+          });
+      }
+
       if (isNeo4jUploadsEnabled()) {
         const idDistribuidor = await resolveNeo4jDistribuidor({
           distribuidorId: distribuidor_id,
@@ -1456,6 +1554,32 @@ router.post(
             `MATCH (e:Episodio {id_episodio: $id_episodio}) SET e.thumbnail_url = $thumbnail_url`,
             { id_episodio: idEpisodio, thumbnail_url: thumbUrl },
           );
+
+          // Si la serie aún no tiene miniatura, usamos este fotograma como miniatura de la serie
+          try {
+            const seriesThumbCheck = await runCypher(
+              `MATCH (s:Serie {id_serie: $id}) RETURN s.thumbnail_url AS thumb LIMIT 1`,
+              { id: idSerie },
+            );
+            const existing = seriesThumbCheck[0]?.thumb;
+            if (!existing) {
+              const seriesThumbName = `serie_${idSerie}_${Date.now()}.jpg`;
+              const seriesThumbAbs = path.join(thumbsDir, seriesThumbName);
+              // reutilizar el mismo archivo generado (copiar)
+              try {
+                fs.copyFileSync(thumbAbsPath, seriesThumbAbs);
+                const seriesThumbUrl = `/assets/thumbnails/${seriesThumbName}`;
+                await runCypher(
+                  `MATCH (s:Serie {id_serie: $id}) SET s.thumbnail_url = $thumbnail_url`,
+                  { id: idSerie, thumbnail_url: seriesThumbUrl },
+                );
+              } catch (copyErr) {
+                console.warn('No se pudo copiar miniatura para serie:', copyErr.message);
+              }
+            }
+          } catch (e) {
+            console.warn('Error chequeando/guardando thumbnail de serie en Neo4j:', e.message);
+          }
         } catch (thumbErr) {
           console.warn(
             "No se pudo generar miniatura para episodio:",

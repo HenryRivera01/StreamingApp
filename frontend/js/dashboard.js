@@ -43,16 +43,39 @@ function formatRating(item) {
 function createCard(item, type) {
   const card = document.createElement("article");
   card.className = "card-media";
-  const poster = item.thumbnail_url || "../assets/placeholder.png";
+  // Asegurar que thumbnail_url sea una URL pública (comienza con / o http),
+  // de lo contrario usar placeholder local.
+  const isPublicThumb =
+    item.thumbnail_url &&
+    (item.thumbnail_url.startsWith("/") ||
+      item.thumbnail_url.startsWith("http"));
+  const poster = isPublicThumb
+    ? item.thumbnail_url
+    : "../assets/placeholder.png";
   const rating = formatRating(item);
+  const sinopsisText = String(item.sinopsis || "").trim();
+  const sinopsisPreview = sinopsisText
+    ? sinopsisText.length > 140
+      ? sinopsisText.slice(0, 137) + "…"
+      : sinopsisText
+    : "";
+
   card.innerHTML = `
     <img src="${poster}" alt="${item.titulo || "Contenido"}" />
     <div class="card-media-overlay">
       <div class="card-media-title">${item.titulo || "Sin título"}</div>
       <div class="card-media-meta">${type === "movie" ? item.anio_estreno || "" : item.anio_inicio_emision || ""}</div>
       <div class="card-media-meta">${rating}</div>
+      ${sinopsisPreview ? `<p class="card-sinopsis">${sinopsisPreview}</p>` : ""}
     </div>`;
+
   card.addEventListener("click", () => {
+    if (type === "series") {
+      // Navigate to series detail page (season/episode selector)
+      window.location.href = `./series.html?id=${encodeURIComponent(item.id_serie)}`;
+      return;
+    }
+
     const params = new URLSearchParams({
       type,
       id: type === "movie" ? item.id_pelicula : item.id_serie,

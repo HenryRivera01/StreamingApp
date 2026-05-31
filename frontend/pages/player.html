@@ -10,22 +10,31 @@
     <div class="player-header">
       <div>
         <a href="./dashboard.html" class="text-link">← Volver</a>
-        <h2 id="playerTitle">Reproduciendo</h2>
       </div>
       <button id="btnLogout" class="btn">Salir</button>
     </div>
-    <section class="player-hero">
-      <img
-        id="thumbnailPreview"
-        class="thumbnail-preview"
-        alt="Miniatura del contenido"
-      />
-      <div class="player-hero-copy">
+
+    <section id="playerHero" class="player-hero hero-backdrop">
+      <div class="hero-overlay">
+        <h2 id="playerTitle">Reproduciendo</h2>
         <p id="playerMeta" class="player-meta"></p>
         <p id="ratingSummary" class="rating-summary"></p>
         <div id="ratingControls" class="rating-controls"></div>
+        <p
+          id="playerSinopsis"
+          class="panel"
+          style="
+            margin-top: 12px;
+            max-width: 60%;
+            background: transparent;
+            border: 0;
+            padding: 0;
+            color: var(--text);
+          "
+        ></p>
       </div>
     </section>
+
     <div class="video-container">
       <video id="video" controls preload="metadata"></video>
     </div>

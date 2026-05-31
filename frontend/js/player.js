@@ -121,10 +121,13 @@ async function initPlayer() {
   const id = params.get("id");
   const video = document.getElementById("video");
   const titleEl = document.getElementById("playerTitle");
-  const thumbnailPreview = document.getElementById("thumbnailPreview");
   const playerMeta = document.getElementById("playerMeta");
   const ratingSummary = document.getElementById("ratingSummary");
   const ratingControls = document.getElementById("ratingControls");
+  const episodeControlsContainer = document.createElement("div");
+  episodeControlsContainer.id = "episodeControls";
+  episodeControlsContainer.style.marginTop = "12px";
+  ratingControls.after(episodeControlsContainer);
   let currentMediaType = null;
   let currentMediaId = null;
 
@@ -172,13 +175,104 @@ async function initPlayer() {
       .filter(Boolean)
       .join(" · ");
 
-    const poster = media.thumbnail_url || "../assets/placeholder.png";
-    thumbnailPreview.src = poster;
-    thumbnailPreview.classList.add("is-ready");
+    const poster =
+      media.thumbnail_url &&
+      (media.thumbnail_url.startsWith("/") ||
+        media.thumbnail_url.startsWith("http"))
+        ? media.thumbnail_url
+        : "../assets/placeholder.png";
+    const hero = document.getElementById("playerHero");
+    if (hero) {
+      hero.style.backgroundImage = `url(${poster})`;
+    }
+    const sinopsisEl = document.getElementById("playerSinopsis");
+    if (sinopsisEl) sinopsisEl.textContent = media.sinopsis || "";
 
     currentMediaType = nextType;
     currentMediaId = nextId;
     await refreshRatingUI(media);
+
+    // Si es episodio, cargar lista de episodios de la serie para permitir
+    // navegación (prev/next, selector) y autoplay del siguiente
+    if (nextType === "episode" && media.id_serie) {
+      try {
+        const res = await fetch(
+          `${API_BASE}/media/series/${encodeURIComponent(media.id_serie)}/episodes`,
+          {
+            headers: { Authorization: `Bearer ${auth.token}` },
+          },
+        );
+        const eps = await res.json();
+        if (Array.isArray(eps)) {
+          const idx = eps.findIndex(
+            (e) => String(e.id_episodio) === String(nextId),
+          );
+          // Construir controles
+          episodeControlsContainer.innerHTML = "";
+          const prevBtn = document.createElement("button");
+          prevBtn.type = "button";
+          prevBtn.className = "btn";
+          prevBtn.textContent = "Anterior";
+          const nextBtn = document.createElement("button");
+          nextBtn.type = "button";
+          nextBtn.className = "btn primary";
+          nextBtn.textContent = "Siguiente";
+
+          const select = document.createElement("select");
+          select.style.marginLeft = "12px";
+          select.className = "input";
+          eps.forEach((e, i) => {
+            const opt = document.createElement("option");
+            opt.value = e.id_episodio;
+            opt.textContent = `S${e.id_temporada || ""}E${e.numero_episodio || i + 1} · ${e.titulo || ""}`;
+            if (i === idx) opt.selected = true;
+            select.appendChild(opt);
+          });
+
+          prevBtn.disabled = idx <= 0;
+          nextBtn.disabled = idx < 0 || idx >= eps.length - 1;
+
+          prevBtn.addEventListener("click", async () => {
+            if (idx > 0) {
+              const target = eps[idx - 1];
+              window.location.href = `./player.html?type=episode&id=${encodeURIComponent(target.id_episodio)}`;
+            }
+          });
+          nextBtn.addEventListener("click", async () => {
+            if (idx >= 0 && idx < eps.length - 1) {
+              const target = eps[idx + 1];
+              window.location.href = `./player.html?type=episode&id=${encodeURIComponent(target.id_episodio)}`;
+            }
+          });
+
+          select.addEventListener("change", (ev) => {
+            const val = ev.target.value;
+            if (val) {
+              window.location.href = `./player.html?type=episode&id=${encodeURIComponent(val)}`;
+            }
+          });
+
+          episodeControlsContainer.appendChild(prevBtn);
+          episodeControlsContainer.appendChild(nextBtn);
+          episodeControlsContainer.appendChild(select);
+
+          // Autoplay siguiente cuando termine
+          video.addEventListener(
+            "ended",
+            () => {
+              const nextIndex = idx + 1;
+              if (nextIndex >= 0 && nextIndex < eps.length) {
+                const target = eps[nextIndex];
+                window.location.href = `./player.html?type=episode&id=${encodeURIComponent(target.id_episodio)}`;
+              }
+            },
+            { once: true },
+          );
+        }
+      } catch (err) {
+        console.warn("No se pudieron cargar episodios de la serie", err);
+      }
+    }
 
     return media;
   }
@@ -191,7 +285,7 @@ async function initPlayer() {
     video.src = `${API_BASE}/media/episodes/${id}/stream?token=${encodeURIComponent(auth.token)}`;
   }
 
-  captureThumbnail(video, thumbnailPreview);
+  // Nota: no se captura thumbnail dinámico aquí (usamos thumbnail_url o placeholder)
 }
 
 window.addEventListener("DOMContentLoaded", initPlayer);

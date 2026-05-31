@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Serie</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+  </head>
+  <body class="dark">
+    <div class="player-header">
+      <div>
+        <a href="./dashboard.html" class="text-link">← Volver</a>
+        <h2 id="seriesTitle">Serie</h2>
+      </div>
+      <button id="btnLogout" class="btn">Salir</button>
+    </div>
+
+    <section
+      id="seriesHero"
+      class="series-hero"
+      style="background-color: #08080b"
+    >
+      <div class="hero-overlay">
+        <h2 id="seriesTitle">Serie</h2>
+        <p id="seriesSinopsis"></p>
+        <div class="series-controls">
+          <label for="seasonSelect">Temporada</label>
+          <select id="seasonSelect"></select>
+        </div>
+      </div>
+    </section>
+
+    <section id="episodesList" class="episodes-grid"></section>
+
+    <script src="../js/series.js"></script>
+  </body>
+</html>

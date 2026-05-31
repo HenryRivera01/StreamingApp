@@ -1,7 +1,7 @@
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 function getAuth() {
-  const raw = localStorage.getItem('auth');
+  const raw = localStorage.getItem("auth");
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -12,27 +12,27 @@ function getAuth() {
 
 function requireAdmin() {
   const auth = getAuth();
-  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') {
-    window.location.href = './dashboard.html';
+  if (!auth || !auth.token || auth.user.rol !== "ADMIN") {
+    window.location.href = "./dashboard.html";
     return null;
   }
   return auth;
 }
 
 function logout() {
-  localStorage.removeItem('auth');
-  window.location.href = './login.html';
+  localStorage.removeItem("auth");
+  window.location.href = "./login.html";
 }
 
 async function loadAdminDashboard() {
   const auth = requireAdmin();
   if (!auth) return;
 
-  if (document.getElementById('btnLogout')) {
-    document.getElementById('btnLogout').addEventListener('click', logout);
+  if (document.getElementById("btnLogout")) {
+    document.getElementById("btnLogout").addEventListener("click", logout);
   }
 
-  const container = document.getElementById('adminDashboard');
+  const container = document.getElementById("adminDashboard");
   if (!container) return;
 
   try {
@@ -41,7 +41,8 @@ async function loadAdminDashboard() {
     });
     const data = await res.json();
     if (!res.ok) {
-      container.innerHTML = '<div class="panel"><p>Error cargando dashboard admin</p></div>';
+      container.innerHTML =
+        '<div class="panel"><p>Error cargando dashboard admin</p></div>';
       return;
     }
 
@@ -60,9 +61,9 @@ async function loadAdminDashboard() {
             (data.mas_visto_peliculas || [])
               .map(
                 (p) =>
-                  `<li>${p.titulo} · ${p.reproducciones} reproducciones</li>`
+                  `<li>${p.titulo} · ${p.reproducciones} reproducciones</li>`,
               )
-              .join('') || '<li>Sin datos</li>'
+              .join("") || "<li>Sin datos</li>"
           }
         </ul>
         <p class="chip">Episodios</p>
@@ -71,9 +72,9 @@ async function loadAdminDashboard() {
             (data.mas_visto_episodios || [])
               .map(
                 (e) =>
-                  `<li>${e.titulo} · ${e.reproducciones} reproducciones</li>`
+                  `<li>${e.titulo} · ${e.reproducciones} reproducciones</li>`,
               )
-              .join('') || '<li>Sin datos</li>'
+              .join("") || "<li>Sin datos</li>"
           }
         </ul>
       </div>
@@ -94,13 +95,14 @@ async function loadAdminDashboard() {
                 .map(
                   (a) => `
               <tr>
-                <td>${a.correo || ''}</td>
-                <td>${a.fecha_reproduccion || ''}</td>
-                <td>${a.tiempo_reproducido || ''}</td>
-                <td>${a.tipo_estado || ''}</td>
-              </tr>`
+                <td>${a.correo || ""}</td>
+                <td>${a.fecha_reproduccion || ""}</td>
+                <td>${a.tiempo_reproducido || ""}</td>
+                <td>${a.tipo_estado || ""}</td>
+              </tr>`,
                 )
-                .join('') || `
+                .join("") ||
+              `
               <tr>
                 <td colspan="4">Sin actividad reciente</td>
               </tr>`
@@ -119,7 +121,7 @@ async function loadAdminDashboard() {
 // Cargar distribuidores, géneros y series para los formularios
 async function loadUploadFormOptions() {
   const auth = getAuth();
-  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+  if (!auth || !auth.token || auth.user.rol !== "ADMIN") return;
 
   let res;
   try {
@@ -133,20 +135,22 @@ async function loadUploadFormOptions() {
 
   const data = await res.json();
   if (!res.ok) {
-    console.error('Error cargando catálogos de upload', data);
+    console.error("Error cargando catálogos de upload", data);
     return;
   }
 
-  const distSelect = document.getElementById('distribuidorSelect');
-  const generosSelect = document.getElementById('generosSelect');
-  const generoPrincipalSelect = document.getElementById('generoPrincipal');
-  const serieSelect = document.getElementById('serieSelect');
-  const generosSeriesSelect = document.getElementById('generosSeriesSelect');
-  const generoPrincipalSerieSelect = document.getElementById('generoPrincipalSerie');
+  const distSelect = document.getElementById("distribuidorSelect");
+  const generosSelect = document.getElementById("generosSelect");
+  const generoPrincipalSelect = document.getElementById("generoPrincipal");
+  const serieSelect = document.getElementById("serieSelect");
+  const generosSeriesSelect = document.getElementById("generosSeriesSelect");
+  const generoPrincipalSerieSelect = document.getElementById(
+    "generoPrincipalSerie",
+  );
 
   if (distSelect && data.distribuidores) {
     data.distribuidores.forEach((d) => {
-      const opt = document.createElement('option');
+      const opt = document.createElement("option");
       opt.value = d.id_distribuidor;
       opt.textContent = d.nombre;
       distSelect.appendChild(opt);
@@ -155,7 +159,7 @@ async function loadUploadFormOptions() {
 
   if (generosSelect && generoPrincipalSelect && data.generos) {
     data.generos.forEach((g) => {
-      const opt = document.createElement('option');
+      const opt = document.createElement("option");
       opt.value = g.id_genero;
       opt.textContent = g.nombre_genero;
       generosSelect.appendChild(opt);
@@ -167,7 +171,7 @@ async function loadUploadFormOptions() {
 
   if (serieSelect && data.series) {
     data.series.forEach((s) => {
-      const opt = document.createElement('option');
+      const opt = document.createElement("option");
       opt.value = s.id_serie;
       opt.textContent = s.titulo;
       serieSelect.appendChild(opt);
@@ -176,7 +180,7 @@ async function loadUploadFormOptions() {
 
   if (generosSeriesSelect && generoPrincipalSerieSelect && data.generos) {
     data.generos.forEach((g) => {
-      const opt = document.createElement('option');
+      const opt = document.createElement("option");
       opt.value = g.id_genero;
       opt.textContent = g.nombre_genero;
       generosSeriesSelect.appendChild(opt);
@@ -190,69 +194,103 @@ async function loadUploadFormOptions() {
 // Subida de películas
 function initUploadForm() {
   const auth = getAuth();
-  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+  if (!auth || !auth.token || auth.user.rol !== "ADMIN") return;
 
-  const form = document.getElementById('uploadForm');
+  const form = document.getElementById("uploadForm");
   if (!form) return;
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const msg = document.getElementById('uploadMsg');
-    msg.textContent = 'Subiendo...';
-    msg.classList.remove('status-error', 'status-success');
+    const msg = document.getElementById("uploadMsg");
+    msg.textContent = "Subiendo...";
+    msg.classList.remove("status-error", "status-success");
 
     const formData = new FormData();
 
-    formData.append('titulo', document.getElementById('titulo').value);
-    formData.append('anio', document.getElementById('anio').value);
-    formData.append('sinopsis', document.getElementById('sinopsis').value);
+    formData.append("titulo", document.getElementById("titulo").value);
+    formData.append("anio", document.getElementById("anio").value);
+    formData.append("sinopsis", document.getElementById("sinopsis").value);
     formData.append(
-      'duracion_minutos',
-      document.getElementById('duracionMinutosMovie').value
+      "duracion_minutos",
+      document.getElementById("duracionMinutosMovie").value,
     );
-    formData.append('clasificacion', document.getElementById('clasificacion').value);
-    formData.append('idioma', document.getElementById('idioma').value);
+    formData.append(
+      "clasificacion",
+      document.getElementById("clasificacion").value,
+    );
+    formData.append("idioma", document.getElementById("idioma").value);
 
-    const distSelect = document.getElementById('distribuidorSelect');
-    const distNuevo = document.getElementById('distribuidorNuevo').value;
+    const distSelect = document.getElementById("distribuidorSelect");
+    const distNuevo = document.getElementById("distribuidorNuevo").value;
     if (distSelect && distSelect.value) {
-      formData.append('distribuidor_id', distSelect.value);
+      formData.append("distribuidor_id", distSelect.value);
     }
     if (distNuevo) {
-      formData.append('distribuidor_nuevo', distNuevo);
+      formData.append("distribuidor_nuevo", distNuevo);
     }
 
-    const generosSelect = document.getElementById('generosSelect');
+    const generosSelect = document.getElementById("generosSelect");
     if (generosSelect) {
       const selectedGeneros = Array.from(generosSelect.selectedOptions).map(
-        (o) => o.value
+        (o) => o.value,
       );
       if (selectedGeneros.length) {
-        formData.append('generos_ids', selectedGeneros.join(','));
+        formData.append("generos_ids", selectedGeneros.join(","));
       }
     }
 
-    const generoPrincipal = document.getElementById('generoPrincipal').value;
+    const generoPrincipal = document.getElementById("generoPrincipal").value;
     if (generoPrincipal) {
-      formData.append('genero_principal_id', generoPrincipal);
+      formData.append("genero_principal_id", generoPrincipal);
     }
 
     formData.append(
-      'participantes_text',
-      document.getElementById('participantes').value
+      "participantes_text",
+      document.getElementById("participantes").value,
     );
 
-    const fileInput = document.getElementById('file');
+    const fileInput = document.getElementById("file");
     if (!fileInput || fileInput.files.length === 0) {
-      msg.textContent = 'Selecciona un archivo .mp4';
-      msg.classList.add('status-error');
+      msg.textContent = "Selecciona un archivo .mp4";
+      msg.classList.add("status-error");
       return;
     }
-    formData.append('file', fileInput.files[0]);
+    // Validar extensiones permitidas (mp4, mkv, webm)
+    const allowedExt = [".mp4", ".mkv", ".webm"];
+    const fileName = fileInput.files[0].name || "";
+    const ext = fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
+    if (!allowedExt.includes(ext)) {
+      msg.textContent = "Extensión no permitida. Usa mp4, mkv o webm.";
+      msg.classList.add("status-error");
+      return;
+    }
+    // Validaciones numéricas mínimas
+    const anioVal = Number(document.getElementById("anio").value);
+    if (
+      document.getElementById("anio").value &&
+      (!Number.isInteger(anioVal) || anioVal < 1888)
+    ) {
+      msg.textContent = "Año inválido (>= 1888).";
+      msg.classList.add("status-error");
+      return;
+    }
+    const durVal = Number(
+      document.getElementById("duracionMinutosMovie").value,
+    );
+    if (
+      document.getElementById("duracionMinutosMovie").value &&
+      (!Number.isFinite(durVal) || durVal <= 0)
+    ) {
+      msg.textContent = "Duración inválida (debe ser mayor que 0).";
+      msg.classList.add("status-error");
+      return;
+    }
+
+    formData.append("file", fileInput.files[0]);
 
     try {
       const res = await fetch(`${API_BASE}/media/upload-movie`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
@@ -260,19 +298,19 @@ function initUploadForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        msg.textContent = data.message || 'Error subiendo película';
-        msg.classList.add('status-error');
+        msg.textContent = data.message || "Error subiendo película";
+        msg.classList.add("status-error");
         return;
       }
-      msg.textContent = 'Película subida con toda la metadata';
-      msg.classList.add('status-success');
+      msg.textContent = "Película subida con toda la metadata";
+      msg.classList.add("status-success");
       form.reset();
       loadAdminDashboard();
       loadUploadFormOptions();
     } catch (err) {
       console.error(err);
-      msg.textContent = 'Error de red';
-      msg.classList.add('status-error');
+      msg.textContent = "Error de red";
+      msg.classList.add("status-error");
     }
   });
 }
@@ -280,110 +318,146 @@ function initUploadForm() {
 // Subida de episodios de series
 function initUploadSeriesForm() {
   const auth = getAuth();
-  if (!auth || !auth.token || auth.user.rol !== 'ADMIN') return;
+  if (!auth || !auth.token || auth.user.rol !== "ADMIN") return;
 
-  const form = document.getElementById('uploadSeriesForm');
+  const form = document.getElementById("uploadSeriesForm");
   if (!form) return;
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const msg = document.getElementById('uploadSeriesMsg');
-    msg.textContent = 'Subiendo episodio...';
-    msg.classList.remove('status-error', 'status-success');
+    const msg = document.getElementById("uploadSeriesMsg");
+    msg.textContent = "Subiendo episodio...";
+    msg.classList.remove("status-error", "status-success");
 
     const fd = new FormData();
 
     // Serie
-    fd.append('serie_id', document.getElementById('serieSelect').value);
-    fd.append('serie_titulo', document.getElementById('serieTitulo').value);
-    fd.append('serie_sinopsis', document.getElementById('serieSinopsis').value);
-    fd.append('serie_anio_inicio', document.getElementById('serieAnio').value);
+    fd.append("serie_id", document.getElementById("serieSelect").value);
+    fd.append("serie_titulo", document.getElementById("serieTitulo").value);
+    fd.append("serie_sinopsis", document.getElementById("serieSinopsis").value);
+    fd.append("serie_anio_inicio", document.getElementById("serieAnio").value);
     fd.append(
-      'serie_numero_temporadas',
-      document.getElementById('serieNumeroTemporadas').value
+      "serie_numero_temporadas",
+      document.getElementById("serieNumeroTemporadas").value,
     );
     fd.append(
-      'serie_clasificacion',
-      document.getElementById('serieClasificacion').value
+      "serie_clasificacion",
+      document.getElementById("serieClasificacion").value,
     );
-    fd.append(
-      'serie_estado',
-      document.getElementById('serieEstado').value
-    );
+    fd.append("serie_estado", document.getElementById("serieEstado").value);
 
     // Temporada
     fd.append(
-      'numero_temporada',
-      document.getElementById('numeroTemporada').value
+      "numero_temporada",
+      document.getElementById("numeroTemporada").value,
     );
     fd.append(
-      'anio_lanzamiento_temp',
-      document.getElementById('anioTemp').value
+      "anio_lanzamiento_temp",
+      document.getElementById("anioTemp").value,
     );
 
     // Episodio
     fd.append(
-      'episodio_titulo',
-      document.getElementById('episodioTitulo').value
+      "episodio_titulo",
+      document.getElementById("episodioTitulo").value,
     );
     fd.append(
-      'numero_episodio',
-      document.getElementById('numeroEpisodio').value
+      "numero_episodio",
+      document.getElementById("numeroEpisodio").value,
     );
     fd.append(
-      'duracion_minutos',
-      document.getElementById('duracionMinutos').value
+      "duracion_minutos",
+      document.getElementById("duracionMinutos").value,
     );
     fd.append(
-      'episodio_sinopsis',
-      document.getElementById('episodioSinopsis').value
+      "episodio_sinopsis",
+      document.getElementById("episodioSinopsis").value,
     );
 
     // Distribuidor (reutiliza los campos de película)
-    const distSelect = document.getElementById('distribuidorSelect');
-    const distNuevo = document.getElementById('distribuidorNuevo').value;
+    const distSelect = document.getElementById("distribuidorSelect");
+    const distNuevo = document.getElementById("distribuidorNuevo").value;
     if (distSelect && distSelect.value) {
-      fd.append('distribuidor_id', distSelect.value);
+      fd.append("distribuidor_id", distSelect.value);
     }
     if (distNuevo) {
-      fd.append('distribuidor_nuevo', distNuevo);
+      fd.append("distribuidor_nuevo", distNuevo);
     }
 
     // Géneros
-    const generosSeriesSelect = document.getElementById('generosSeriesSelect');
+    const generosSeriesSelect = document.getElementById("generosSeriesSelect");
     if (generosSeriesSelect) {
       const selectedG = Array.from(generosSeriesSelect.selectedOptions).map(
-        (o) => o.value
+        (o) => o.value,
       );
       if (selectedG.length) {
-        fd.append('generos_ids', selectedG.join(','));
+        fd.append("generos_ids", selectedG.join(","));
       }
     }
 
-    const generoPrincipalSerie =
-      document.getElementById('generoPrincipalSerie').value;
+    const generoPrincipalSerie = document.getElementById(
+      "generoPrincipalSerie",
+    ).value;
     if (generoPrincipalSerie) {
-      fd.append('genero_principal_id', generoPrincipalSerie);
+      fd.append("genero_principal_id", generoPrincipalSerie);
     }
 
     // Participantes
     fd.append(
-      'participantes_text',
-      document.getElementById('participantesSerie').value
+      "participantes_text",
+      document.getElementById("participantesSerie").value,
     );
 
     // Archivo
-    const fileInput = document.getElementById('fileSerie');
+    const fileInput = document.getElementById("fileSerie");
     if (!fileInput || !fileInput.files.length) {
-      msg.textContent = 'Selecciona un archivo .mp4';
-      msg.classList.add('status-error');
+      msg.textContent = "Selecciona un archivo .mp4";
+      msg.classList.add("status-error");
       return;
     }
-    fd.append('file', fileInput.files[0]);
+    // Validar extensiones permitidas (mp4, mkv, webm)
+    const allowedExtS = [".mp4", ".mkv", ".webm"];
+    const fileNameS = fileInput.files[0].name || "";
+    const extS = fileNameS.slice(fileNameS.lastIndexOf(".")).toLowerCase();
+    if (!allowedExtS.includes(extS)) {
+      msg.textContent = "Extensión no permitida. Usa mp4, mkv o webm.";
+      msg.classList.add("status-error");
+      return;
+    }
+    // Validar numericos mínimos
+    const numTemp = Number(document.getElementById("numeroTemporada").value);
+    if (
+      document.getElementById("numeroTemporada").value &&
+      (!Number.isInteger(numTemp) || numTemp <= 0)
+    ) {
+      msg.textContent = "Número de temporada inválido.";
+      msg.classList.add("status-error");
+      return;
+    }
+    const numEpi = Number(document.getElementById("numeroEpisodio").value);
+    if (
+      document.getElementById("numeroEpisodio").value &&
+      (!Number.isInteger(numEpi) || numEpi <= 0)
+    ) {
+      msg.textContent = "Número de episodio inválido.";
+      msg.classList.add("status-error");
+      return;
+    }
+    const durE = Number(document.getElementById("duracionMinutos").value);
+    if (
+      document.getElementById("duracionMinutos").value &&
+      (!Number.isFinite(durE) || durE <= 0)
+    ) {
+      msg.textContent = "Duración inválida (debe ser mayor que 0).";
+      msg.classList.add("status-error");
+      return;
+    }
+
+    fd.append("file", fileInput.files[0]);
 
     try {
       const res = await fetch(`${API_BASE}/media/upload-series-episode`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
@@ -391,24 +465,24 @@ function initUploadSeriesForm() {
       });
       const data = await res.json();
       if (!res.ok) {
-        msg.textContent = data.message || 'Error subiendo episodio';
-        msg.classList.add('status-error');
+        msg.textContent = data.message || "Error subiendo episodio";
+        msg.classList.add("status-error");
         return;
       }
-      msg.textContent = 'Episodio subido correctamente';
-      msg.classList.add('status-success');
+      msg.textContent = "Episodio subido correctamente";
+      msg.classList.add("status-success");
       form.reset();
       loadAdminDashboard();
       loadUploadFormOptions();
     } catch (err) {
       console.error(err);
-      msg.textContent = 'Error de red';
-      msg.classList.add('status-error');
+      msg.textContent = "Error de red";
+      msg.classList.add("status-error");
     }
   });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener("DOMContentLoaded", () => {
   loadAdminDashboard();
   loadUploadFormOptions();
   initUploadForm();
