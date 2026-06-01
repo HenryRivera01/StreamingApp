@@ -35,6 +35,24 @@
       </div>
     </section>
 
+    <!-- Resume modal -->
+    <div id="resumeModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-dialog panel">
+        <p id="resumeMessage"></p>
+        <div
+          style="
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+          "
+        >
+          <button id="btnRestart" class="btn">Empezar desde 0</button>
+          <button id="btnResume" class="btn primary">Reanudar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="video-container">
       <video id="video" controls preload="metadata"></video>
     </div>

@@ -604,6 +604,26 @@ function generateThumbnail(inputFilePath, outputFilePath, atSeconds = 1) {
   });
 }
 
+function getVideoDurationMinutes(inputFilePath) {
+  return new Promise((resolve) => {
+    const bin = ffmpegStaticPath || "ffmpeg";
+    const cmd = `"${bin}" -i "${inputFilePath}"`;
+    exec(cmd, (err, stdout, stderr) => {
+      const output = `${stdout || ""}\n${stderr || ""}`;
+      const match = output.match(/Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/);
+      if (!match) return resolve(null);
+      const hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const seconds = parseFloat(match[3]);
+      const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      if (!Number.isFinite(totalSeconds) || totalSeconds <= 0)
+        return resolve(null);
+      const totalMinutes = Math.max(1, Math.round(totalSeconds / 60));
+      return resolve(totalMinutes);
+    });
+  });
+}
+
 if (!fs.existsSync(moviesDir)) {
   fs.mkdirSync(moviesDir, { recursive: true });
 }
@@ -910,7 +930,10 @@ router.post(
           .status(400)
           .json({ message: "Año inválido. Debe ser entero >= 1888" });
       }
+
+      const durationFromFile = await getVideoDurationMinutes(req.file.path);
       if (
+        !durationFromFile &&
         duracion_minutos &&
         (!Number.isFinite(Number(duracion_minutos)) ||
           Number(duracion_minutos) <= 0)
@@ -919,6 +942,12 @@ router.post(
           .status(400)
           .json({ message: "Duración inválida. Debe ser mayor que 0" });
       }
+
+      const resolvedDuration = durationFromFile
+        ? Number(durationFromFile)
+        : duracion_minutos
+          ? parseInt(duracion_minutos, 10)
+          : null;
 
       if (isNeo4jUploadsEnabled()) {
         const idDistribuidor = await resolveNeo4jDistribuidor({
@@ -949,9 +978,7 @@ router.post(
             titulo: titulo.trim(),
             sinopsis: sinopsis || null,
             anio_estreno: anio ? parseInt(anio, 10) : null,
-            duracion_minutos: duracion_minutos
-              ? parseInt(duracion_minutos, 10)
-              : null,
+            duracion_minutos: resolvedDuration,
             clasificacion_edad: clasificacion || null,
             idioma_original: idioma || null,
             url_video: relPath,
@@ -1119,7 +1146,7 @@ router.post(
           titulo.trim(),
           sinopsis || null,
           anio ? parseInt(anio, 10) : null,
-          duracion_minutos ? parseInt(duracion_minutos, 10) : null,
+          resolvedDuration,
           clasificacion || null,
           idioma || null,
           relPath,
@@ -1276,7 +1303,9 @@ router.post(
       ) {
         return res.status(400).json({ message: "Número de episodio inválido" });
       }
+      const durationFromFile = await getVideoDurationMinutes(req.file.path);
       if (
+        !durationFromFile &&
         duracion_minutos &&
         (!Number.isFinite(Number(duracion_minutos)) ||
           Number(duracion_minutos) <= 0)
@@ -1285,13 +1314,16 @@ router.post(
           .status(400)
           .json({ message: "Duración inválida. Debe ser mayor que 0" });
       }
+
+      const resolvedDuration = durationFromFile
+        ? Number(durationFromFile)
+        : duracion_minutos
+          ? parseInt(duracion_minutos, 10)
+          : null;
       if (!serie_id && (!serie_titulo || !serie_titulo.trim())) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Debe indicar una serie existente o el título de una nueva",
-          });
+        return res.status(400).json({
+          message: "Debe indicar una serie existente o el título de una nueva",
+        });
       }
 
       if (isNeo4jUploadsEnabled()) {
@@ -1462,9 +1494,7 @@ router.post(
             numero_episodio: numero_episodio
               ? parseInt(numero_episodio, 10)
               : null,
-            duracion_minutos: duracion_minutos
-              ? parseInt(duracion_minutos, 10)
-              : null,
+            duracion_minutos: resolvedDuration,
             sinopsis: episodio_sinopsis || null,
             url_video: relPath,
           },
@@ -1574,11 +1604,17 @@ router.post(
                   { id: idSerie, thumbnail_url: seriesThumbUrl },
                 );
               } catch (copyErr) {
-                console.warn('No se pudo copiar miniatura para serie:', copyErr.message);
+                console.warn(
+                  "No se pudo copiar miniatura para serie:",
+                  copyErr.message,
+                );
               }
             }
           } catch (e) {
-            console.warn('Error chequeando/guardando thumbnail de serie en Neo4j:', e.message);
+            console.warn(
+              "Error chequeando/guardando thumbnail de serie en Neo4j:",
+              e.message,
+            );
           }
         } catch (thumbErr) {
           console.warn(
@@ -1769,7 +1805,7 @@ router.post(
           idTemporada,
           episodio_titulo.trim(),
           numero_episodio ? parseInt(numero_episodio, 10) : null,
-          duracion_minutos ? parseInt(duracion_minutos, 10) : null,
+          resolvedDuration,
           episodio_sinopsis || null,
           relPath,
         ],

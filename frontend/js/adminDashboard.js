@@ -24,6 +24,43 @@ function logout() {
   window.location.href = "./login.html";
 }
 
+function formatDate(value) {
+  if (!value) return "Sin fecha";
+  if (typeof value === "string") return value;
+  if (value instanceof Date)
+    return value.toISOString().slice(0, 19).replace("T", " ");
+  if (typeof value === "object") {
+    if (
+      typeof value.toString === "function" &&
+      value.toString !== Object.prototype.toString
+    ) {
+      return value.toString();
+    }
+    if (
+      typeof value.year === "number" &&
+      typeof value.month === "number" &&
+      typeof value.day === "number"
+    ) {
+      return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+    }
+  }
+  return String(value);
+}
+
+function statCard(label, value, hint = "") {
+  return `
+    <article class="stat-card">
+      <span class="stat-label">${label}</span>
+      <strong class="stat-value">${value}</strong>
+      ${hint ? `<span class="stat-hint">${hint}</span>` : ""}
+    </article>
+  `;
+}
+
+function listItem(text) {
+  return `<li class="list-item">${text}</li>`;
+}
+
 async function loadAdminDashboard() {
   const auth = requireAdmin();
   if (!auth) return;
@@ -46,43 +83,77 @@ async function loadAdminDashboard() {
       return;
     }
 
+    const totalViews = Number(data.total_historial || 0);
+    const topMovie = (data.mas_visto_peliculas || [])[0];
+    const topEpisode = (data.mas_visto_episodios || [])[0];
+    const topUser = (data.usuarios_mas_activos || [])[0];
+
     container.innerHTML = `
-      <div class="panel">
+      <div class="panel admin-kpis">
         <h3>Métricas generales</h3>
-        <p>Total usuarios: <strong>${data.total_usuarios}</strong></p>
-        <p>Total películas: <strong>${data.total_peliculas}</strong></p>
-        <p>Total series: <strong>${data.total_series}</strong></p>
+        <div class="stats-grid">
+          ${statCard("Usuarios", data.total_usuarios, "Cuentas registradas")}
+          ${statCard("Películas", data.total_peliculas, "Catálogo de películas")}
+          ${statCard("Series", data.total_series, "Series activas")}
+          ${statCard("Reproducciones", totalViews, "Entradas en historial")}
+        </div>
       </div>
       <div class="panel">
         <h3>Contenido más visto</h3>
-        <p class="chip">Películas</p>
+        <div class="summary-columns">
+          <div>
+            <p class="chip">Películas</p>
+            <ul class="list-compact">
+              ${
+                (data.mas_visto_peliculas || [])
+                  .map((p, index) =>
+                    listItem(
+                      `${index + 1}. ${p.titulo} · ${p.reproducciones} reproducciones`,
+                    ),
+                  )
+                  .join("") || listItem("Sin datos")
+              }
+            </ul>
+          </div>
+          <div>
+            <p class="chip">Episodios</p>
+            <ul class="list-compact">
+              ${
+                (data.mas_visto_episodios || [])
+                  .map((e, index) =>
+                    listItem(
+                      `${index + 1}. ${e.titulo} · ${e.reproducciones} reproducciones`,
+                    ),
+                  )
+                  .join("") || listItem("Sin datos")
+              }
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Usuarios más activos</h3>
         <ul class="list-compact">
           ${
-            (data.mas_visto_peliculas || [])
-              .map(
-                (p) =>
-                  `<li>${p.titulo} · ${p.reproducciones} reproducciones</li>`,
+            (data.usuarios_mas_activos || [])
+              .map((u, index) =>
+                listItem(
+                  `${index + 1}. ${u.correo || u.id_usuario || "Usuario"} · ${u.total_repros || 0} reproducciones`,
+                ),
               )
-              .join("") || "<li>Sin datos</li>"
+              .join("") || listItem("Sin datos")
           }
         </ul>
-        <p class="chip">Episodios</p>
-        <ul class="list-compact">
-          ${
-            (data.mas_visto_episodios || [])
-              .map(
-                (e) =>
-                  `<li>${e.titulo} · ${e.reproducciones} reproducciones</li>`,
-              )
-              .join("") || "<li>Sin datos</li>"
-          }
-        </ul>
+        ${topUser ? `<p class="help-text">Más activo: ${topUser.correo || topUser.id_usuario} con ${topUser.total_repros} reproducciones.</p>` : ""}
+        ${topMovie ? `<p class="help-text">Película líder: ${topMovie.titulo}.</p>` : ""}
+        ${topEpisode ? `<p class="help-text">Episodio líder: ${topEpisode.titulo}.</p>` : ""}
       </div>
       <div class="panel" style="grid-column:1 / -1;">
         <h3>Actividad reciente</h3>
         <table class="table">
           <thead>
             <tr>
+              <th>Contenido</th>
               <th>Usuario</th>
               <th>Fecha</th>
               <th>Tiempo (min)</th>
@@ -95,8 +166,9 @@ async function loadAdminDashboard() {
                 .map(
                   (a) => `
               <tr>
+                <td>${a.contenido_tipo || ""}${a.contenido_titulo ? ` · ${a.contenido_titulo}` : ""}</td>
                 <td>${a.correo || ""}</td>
-                <td>${a.fecha_reproduccion || ""}</td>
+                <td>${formatDate(a.fecha_reproduccion)}</td>
                 <td>${a.tiempo_reproducido || ""}</td>
                 <td>${a.tipo_estado || ""}</td>
               </tr>`,
@@ -104,7 +176,7 @@ async function loadAdminDashboard() {
                 .join("") ||
               `
               <tr>
-                <td colspan="4">Sin actividad reciente</td>
+                <td colspan="5">Sin actividad reciente</td>
               </tr>`
             }
           </tbody>

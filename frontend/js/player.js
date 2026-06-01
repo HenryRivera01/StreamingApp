@@ -112,6 +112,12 @@ async function submitRating(auth, type, id, puntuacion) {
   return data;
 }
 
+function formatResumeMessage(minutes) {
+  const safeMinutes = Math.max(0, Math.floor(Number(minutes) || 0));
+  if (!safeMinutes) return "";
+  return `¿Deseas reanudar desde el minuto ${safeMinutes}?`;
+}
+
 async function initPlayer() {
   const auth = requireAuth();
   if (!auth) return;
@@ -130,6 +136,9 @@ async function initPlayer() {
   ratingControls.after(episodeControlsContainer);
   let currentMediaType = null;
   let currentMediaId = null;
+  let resumeSeconds = 0;
+  let lastProgressSentAt = 0;
+  const progressIntervalMs = 15000;
 
   async function refreshRatingUI(media) {
     const currentRating = Number(media.user_rating || 0);
@@ -277,12 +286,165 @@ async function initPlayer() {
     return media;
   }
 
+  async function fetchProgress(nextType, nextId) {
+    const endpoint =
+      nextType === "movie"
+        ? `${API_BASE}/media/movies/${nextId}/progress`
+        : `${API_BASE}/media/episodes/${nextId}/progress`;
+
+    const res = await fetch(endpoint, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return null;
+    }
+    return data;
+  }
+
+  async function sendProgress(nextType, nextId, ended = false) {
+    if (!Number.isFinite(video.currentTime) || video.currentTime <= 0) return;
+    const endpoint =
+      nextType === "movie"
+        ? `${API_BASE}/media/movies/${nextId}/progress`
+        : `${API_BASE}/media/episodes/${nextId}/progress`;
+
+    const payload = {
+      current_time: Math.floor(video.currentTime),
+      duration_seconds: Number.isFinite(video.duration)
+        ? Math.floor(video.duration)
+        : 0,
+      ended,
+    };
+
+    try {
+      await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${auth.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      // Ignorar errores de red para no interrumpir la reproducción
+    }
+  }
+
+  async function setupProgressTracking(nextType, nextId) {
+    const progress = await fetchProgress(nextType, nextId);
+    // If there's saved progress and it's not completed, show resume modal
+    if (
+      progress &&
+      progress.ultimo_minuto &&
+      progress.tipo_estado !== "completado"
+    ) {
+      const message = formatResumeMessage(progress.ultimo_minuto);
+      const resumeModal = document.getElementById("resumeModal");
+      const resumeMessageEl = document.getElementById("resumeMessage");
+      const btnResume = document.getElementById("btnResume");
+      const btnRestart = document.getElementById("btnRestart");
+
+      if (
+        message &&
+        resumeModal &&
+        resumeMessageEl &&
+        btnResume &&
+        btnRestart
+      ) {
+        resumeMessageEl.textContent = message;
+        resumeModal.classList.remove("hidden");
+        resumeModal.setAttribute("aria-hidden", "false");
+
+        const resumeSecondsCandidate =
+          Number(progress.resume_seconds || progress.ultimo_minuto * 60) || 0;
+
+        const cleanup = () => {
+          resumeModal.classList.add("hidden");
+          resumeModal.setAttribute("aria-hidden", "true");
+          btnResume.replaceWith(btnResume.cloneNode(true));
+          btnRestart.replaceWith(btnRestart.cloneNode(true));
+        };
+
+        btnResume.addEventListener(
+          "click",
+          (ev) => {
+            ev.preventDefault();
+            resumeSeconds = resumeSecondsCandidate;
+            cleanup();
+          },
+          { once: true },
+        );
+
+        btnRestart.addEventListener(
+          "click",
+          async (ev) => {
+            ev.preventDefault();
+            resumeSeconds = 0;
+            cleanup();
+            // Optionally reset stored progress on server
+            const endpoint =
+              nextType === "movie"
+                ? `${API_BASE}/media/movies/${nextId}/progress`
+                : `${API_BASE}/media/episodes/${nextId}/progress`;
+            try {
+              await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${auth.token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  current_time: 0,
+                  duration_seconds: progress.duration_seconds || 0,
+                  ended: false,
+                }),
+              });
+            } catch (e) {
+              // ignore errors
+            }
+          },
+          { once: true },
+        );
+      }
+    }
+
+    video.addEventListener(
+      "loadedmetadata",
+      () => {
+        if (resumeSeconds > 0) {
+          const safeTime = Math.min(
+            resumeSeconds,
+            Number.isFinite(video.duration)
+              ? Math.max(video.duration - 1, 0)
+              : resumeSeconds,
+          );
+          video.currentTime = safeTime;
+        }
+      },
+      { once: true },
+    );
+
+    const maybeSend = (force = false, ended = false) => {
+      const now = Date.now();
+      if (!force && now - lastProgressSentAt < progressIntervalMs) return;
+      lastProgressSentAt = now;
+      sendProgress(nextType, nextId, ended);
+    };
+
+    video.addEventListener("timeupdate", () => maybeSend(false, false));
+    video.addEventListener("pause", () => maybeSend(true, false));
+    video.addEventListener("ended", () => maybeSend(true, true));
+  }
+
   if (type === "movie") {
     await renderPlayer("movie", id);
     video.src = `${API_BASE}/media/movies/${id}/stream?token=${encodeURIComponent(auth.token)}`;
+    await setupProgressTracking("movie", id);
   } else if (type === "episode") {
     await renderPlayer("episode", id);
     video.src = `${API_BASE}/media/episodes/${id}/stream?token=${encodeURIComponent(auth.token)}`;
+    await setupProgressTracking("episode", id);
   }
 
   // Nota: no se captura thumbnail dinámico aquí (usamos thumbnail_url o placeholder)

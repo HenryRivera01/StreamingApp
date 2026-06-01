@@ -2,6 +2,44 @@ const pool = require("../config/db");
 const { runCypher } = require("../config/neo4j");
 const { isNeo4jAdminEnabled } = require("../config/migrationFlags");
 
+function formatRecentDate(value) {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 19).replace("T", " ");
+  }
+
+  if (typeof value === "object") {
+    if (
+      typeof value.toString === "function" &&
+      value.toString !== Object.prototype.toString
+    ) {
+      return value.toString();
+    }
+
+    if (
+      typeof value.year === "number" &&
+      typeof value.month === "number" &&
+      typeof value.day === "number"
+    ) {
+      return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+    }
+  }
+
+  return String(value);
+}
+
+function normalizeDashboardRow(row) {
+  return {
+    ...row,
+    fecha_reproduccion: formatRecentDate(row.fecha_reproduccion),
+  };
+}
+
 async function getDashboardStats(req, res) {
   try {
     if (isNeo4jAdminEnabled()) {
@@ -9,13 +47,16 @@ async function getDashboardStats(req, res) {
         usuariosRows,
         peliculasRows,
         seriesRows,
+        historialRows,
         masVistoPeliculas,
         masVistoEpisodios,
         actividadReciente,
+        topUsuarios,
       ] = await Promise.all([
         runCypher("MATCH (u:Usuario) RETURN count(u) AS total"),
         runCypher("MATCH (p:Pelicula) RETURN count(p) AS total"),
         runCypher("MATCH (s:Serie) RETURN count(s) AS total"),
+        runCypher("MATCH (h:Historial) RETURN count(h) AS total"),
         runCypher(`
             MATCH (h:Historial)-[:REPRODUCIO]->(p:Pelicula)
             RETURN p.id_pelicula AS id_pelicula, p.titulo AS titulo, count(h) AS reproducciones
@@ -31,14 +72,30 @@ async function getDashboardStats(req, res) {
         runCypher(`
             MATCH (u:Usuario)-[:TIENE_HISTORIAL]->(h:Historial)
             OPTIONAL MATCH (h)-[:CON_ESTADO]->(er:EstadoReproduccion)
+            OPTIONAL MATCH (h)-[:REPRODUCIO]->(p:Pelicula)
+            OPTIONAL MATCH (h)-[:REPRODUCIO]->(e:Episodio)
             RETURN
               h.id_historial AS id_historial,
               u.correo AS correo,
               h.fecha_reproduccion AS fecha_reproduccion,
               h.tiempo_reproducido AS tiempo_reproducido,
-              er.tipo_estado AS tipo_estado
+              er.tipo_estado AS tipo_estado,
+              coalesce(p.titulo, e.titulo, 'Contenido desconocido') AS contenido_titulo,
+              CASE
+                WHEN p.titulo IS NOT NULL THEN 'Película'
+                WHEN e.titulo IS NOT NULL THEN 'Episodio'
+                ELSE 'Contenido'
+              END AS contenido_tipo
             ORDER BY h.fecha_reproduccion DESC, h.id_historial DESC
             LIMIT 20
+          `),
+        runCypher(`
+            MATCH (u:Usuario)-[:TIENE_HISTORIAL]->(h:Historial)
+            WITH u, count(h) AS total_repros
+            WHERE total_repros > 0
+            RETURN u.id_usuario AS id_usuario, u.correo AS correo, total_repros
+            ORDER BY total_repros DESC, correo ASC
+            LIMIT 5
           `),
       ]);
 
@@ -46,9 +103,11 @@ async function getDashboardStats(req, res) {
         total_usuarios: usuariosRows[0]?.total || 0,
         total_peliculas: peliculasRows[0]?.total || 0,
         total_series: seriesRows[0]?.total || 0,
+        total_historial: historialRows[0]?.total || 0,
         mas_visto_peliculas: masVistoPeliculas,
         mas_visto_episodios: masVistoEpisodios,
-        actividad_reciente: actividadReciente,
+        actividad_reciente: actividadReciente.map(normalizeDashboardRow),
+        usuarios_mas_activos: topUsuarios,
       });
     }
 
@@ -56,13 +115,16 @@ async function getDashboardStats(req, res) {
       usuarios,
       peliculas,
       series,
+      historial,
       masVistoPeliculas,
       masVistoEpisodios,
       actividadReciente,
+      topUsuarios,
     ] = await Promise.all([
       pool.query("SELECT COUNT(*)::int AS total FROM usuario"),
       pool.query("SELECT COUNT(*)::int AS total FROM pelicula"),
       pool.query("SELECT COUNT(*)::int AS total FROM serie"),
+      pool.query("SELECT COUNT(*)::int AS total FROM historial"),
       pool.query(`
         SELECT
           p.id_pelicula,
@@ -97,14 +159,46 @@ async function getDashboardStats(req, res) {
           u.correo,
           h.fecha_reproduccion,
           h.tiempo_reproducido,
-          er.tipo_estado
+          er.tipo_estado,
+          COALESCE(p.titulo, e.titulo, 'Contenido desconocido') AS contenido_titulo,
+          CASE
+            WHEN p.id_pelicula IS NOT NULL THEN 'Película'
+            WHEN e.id_episodio IS NOT NULL THEN 'Episodio'
+            ELSE 'Contenido'
+          END AS contenido_tipo
         FROM historial h
         LEFT JOIN usuario u
           ON h.id_usuario = u.id_usuario
         LEFT JOIN estado_reproduccion er
           ON h.id_estado = er.id_estado
+        LEFT JOIN historial_pelicula hp
+          ON h.id_historial = hp.id_historial
+        LEFT JOIN pelicula p
+          ON hp.id_pelicula = p.id_pelicula
+        LEFT JOIN historial_episodio he
+          ON h.id_historial = he.id_historial
+        LEFT JOIN episodio e
+          ON he.id_episodio = e.id_episodio
         ORDER BY h.fecha_reproduccion DESC, h.id_historial DESC
         LIMIT 20
+      `),
+      pool.query(`
+        SELECT
+          u.id_usuario,
+          u.correo,
+          stats.total_repros
+        FROM usuario u
+        JOIN (
+          SELECT
+            h.id_usuario,
+            COUNT(*)::int AS total_repros
+          FROM historial h
+          WHERE h.id_usuario IS NOT NULL
+          GROUP BY h.id_usuario
+        ) stats
+          ON u.id_usuario = stats.id_usuario
+        ORDER BY stats.total_repros DESC, u.correo ASC
+        LIMIT 5
       `),
     ]);
 
@@ -112,9 +206,11 @@ async function getDashboardStats(req, res) {
       total_usuarios: usuarios.rows[0]?.total || 0,
       total_peliculas: peliculas.rows[0]?.total || 0,
       total_series: series.rows[0]?.total || 0,
+      total_historial: historial.rows[0]?.total || 0,
       mas_visto_peliculas: masVistoPeliculas.rows,
       mas_visto_episodios: masVistoEpisodios.rows,
-      actividad_reciente: actividadReciente.rows,
+      actividad_reciente: actividadReciente.rows.map(normalizeDashboardRow),
+      usuarios_mas_activos: topUsuarios.rows,
     });
   } catch (err) {
     console.error(err);
@@ -219,13 +315,14 @@ async function listUsers(req, res) {
 async function advancedQueries(req, res) {
   try {
     if (isNeo4jAdminEnabled()) {
-      const [porGenero, promedioDuracionRows, topActivos] = await Promise.all([
-        runCypher(`
+      const [porGenero, promedioDuracionRows, topActivos, sinReproducciones] =
+        await Promise.all([
+          runCypher(`
           MATCH (p:Pelicula)-[:TIENE_GENERO]->(g:Genero)
           RETURN g.nombre_genero AS nombre_genero, count(p) AS total
           ORDER BY total DESC, nombre_genero ASC
         `),
-        runCypher(`
+          runCypher(`
           MATCH (p:Pelicula)
           WHERE p.duracion_minutos IS NOT NULL
           RETURN
@@ -233,14 +330,22 @@ async function advancedQueries(req, res) {
             max(p.duracion_minutos) AS max_pelicula,
             min(p.duracion_minutos) AS min_pelicula
         `),
-        runCypher(`
+          runCypher(`
           MATCH (u:Usuario)-[:TIENE_HISTORIAL]->(h:Historial)
           WITH u, count(h) AS total_repros
           WHERE total_repros >= 5
           RETURN u.id_usuario AS id_usuario, u.correo AS correo, total_repros
           ORDER BY total_repros DESC, correo ASC
         `),
-      ]);
+          runCypher(`
+          MATCH (p:Pelicula)
+          OPTIONAL MATCH (h:Historial)-[:REPRODUCIO]->(p)
+          WITH p, count(h) AS reproducciones
+          WHERE reproducciones = 0
+          RETURN p.id_pelicula AS id_pelicula, p.titulo AS titulo
+          ORDER BY p.titulo ASC
+        `),
+        ]);
 
       const promedioDuracion = promedioDuracionRows[0] || {
         promedio_peliculas: null,
@@ -252,12 +357,14 @@ async function advancedQueries(req, res) {
         contenido_por_genero: porGenero,
         duracion_peliculas: promedioDuracion,
         usuarios_mas_activos: topActivos,
+        peliculas_sin_reproducciones: sinReproducciones,
       });
     }
 
-    const [porGenero, promedioDuracion, topActivos] = await Promise.all([
-      // GROUP BY, JOIN, COUNT, HAVING
-      pool.query(`
+    const [porGenero, promedioDuracion, topActivos, sinReproducciones] =
+      await Promise.all([
+        // GROUP BY, JOIN, COUNT, HAVING
+        pool.query(`
         SELECT
           g.nombre_genero,
           COUNT(pg.id_pelicula)::int AS total
@@ -269,8 +376,8 @@ async function advancedQueries(req, res) {
         ORDER BY total DESC, g.nombre_genero ASC
       `),
 
-      // AVG, MAX, MIN
-      pool.query(`
+        // AVG, MAX, MIN
+        pool.query(`
         SELECT
           AVG(p.duracion_minutos)::numeric(10,2) AS promedio_peliculas,
           MAX(p.duracion_minutos) AS max_pelicula,
@@ -279,8 +386,8 @@ async function advancedQueries(req, res) {
         WHERE p.duracion_minutos IS NOT NULL
       `),
 
-      // Subconsulta: usuarios con más de X reproducciones
-      pool.query(`
+        // Subconsulta: usuarios con más de X reproducciones
+        pool.query(`
         SELECT
           u.id_usuario,
           u.correo,
@@ -298,12 +405,24 @@ async function advancedQueries(req, res) {
         WHERE stats.total_repros >= 5
         ORDER BY stats.total_repros DESC, u.correo ASC
       `),
-    ]);
+
+        pool.query(`
+        SELECT
+          p.id_pelicula,
+          p.titulo
+        FROM pelicula p
+        LEFT JOIN historial_pelicula hp
+          ON p.id_pelicula = hp.id_pelicula
+        WHERE hp.id_historial IS NULL
+        ORDER BY p.titulo ASC
+      `),
+      ]);
 
     return res.json({
       contenido_por_genero: porGenero.rows,
       duracion_peliculas: promedioDuracion.rows[0],
       usuarios_mas_activos: topActivos.rows,
+      peliculas_sin_reproducciones: sinReproducciones.rows,
     });
   } catch (err) {
     console.error(err);

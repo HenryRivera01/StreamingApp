@@ -117,6 +117,135 @@ async function streamEpisode(req, res) {
   }
 }
 
+function computeProgressState(currentSeconds, durationSeconds, ended) {
+  const safeCurrent = Number.isFinite(currentSeconds) ? currentSeconds : 0;
+  const safeDuration = Number.isFinite(durationSeconds) ? durationSeconds : 0;
+  const ratio = safeDuration > 0 ? safeCurrent / safeDuration : 0;
+  const completed = Boolean(ended) || ratio >= 0.9;
+  return {
+    estado: completed ? "completado" : "en_progreso",
+    minutos: Math.max(0, Math.floor(safeCurrent / 60)),
+  };
+}
+
+async function getMovieProgress(req, res) {
+  try {
+    const progress = await Media.getMovieProgress(
+      req.user.id_usuario,
+      req.params.id,
+    );
+    if (!progress) {
+      return res.json({
+        ultimo_minuto: 0,
+        tiempo_reproducido: 0,
+        tipo_estado: null,
+        resume_seconds: 0,
+      });
+    }
+    const ultimo = Number(progress.ultimo_minuto || 0);
+    return res.json({
+      ...progress,
+      ultimo_minuto: ultimo,
+      resume_seconds: ultimo * 60,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error obteniendo progreso" });
+  }
+}
+
+async function getEpisodeProgress(req, res) {
+  try {
+    const progress = await Media.getEpisodeProgress(
+      req.user.id_usuario,
+      req.params.id,
+    );
+    if (!progress) {
+      return res.json({
+        ultimo_minuto: 0,
+        tiempo_reproducido: 0,
+        tipo_estado: null,
+        resume_seconds: 0,
+      });
+    }
+    const ultimo = Number(progress.ultimo_minuto || 0);
+    return res.json({
+      ...progress,
+      ultimo_minuto: ultimo,
+      resume_seconds: ultimo * 60,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error obteniendo progreso" });
+  }
+}
+
+async function updateMovieProgress(req, res) {
+  try {
+    const currentSeconds = Number(req.body?.current_time);
+    const durationSeconds = Number(req.body?.duration_seconds);
+    const ended = Boolean(req.body?.ended);
+
+    if (!Number.isFinite(currentSeconds) || currentSeconds < 0) {
+      return res.status(400).json({ message: "current_time es requerido" });
+    }
+
+    const { estado, minutos } = computeProgressState(
+      currentSeconds,
+      durationSeconds,
+      ended,
+    );
+
+    const result = await Media.upsertMovieProgress({
+      userId: req.user.id_usuario,
+      movieId: req.params.id,
+      minutos,
+      estado,
+    });
+
+    return res.json({
+      ...result,
+      resume_seconds: minutos * 60,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error guardando progreso" });
+  }
+}
+
+async function updateEpisodeProgress(req, res) {
+  try {
+    const currentSeconds = Number(req.body?.current_time);
+    const durationSeconds = Number(req.body?.duration_seconds);
+    const ended = Boolean(req.body?.ended);
+
+    if (!Number.isFinite(currentSeconds) || currentSeconds < 0) {
+      return res.status(400).json({ message: "current_time es requerido" });
+    }
+
+    const { estado, minutos } = computeProgressState(
+      currentSeconds,
+      durationSeconds,
+      ended,
+    );
+
+    const result = await Media.upsertEpisodeProgress({
+      userId: req.user.id_usuario,
+      episodeId: req.params.id,
+      minutos,
+      estado,
+    });
+
+    return res.json({
+      ...result,
+      resume_seconds: minutos * 60,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error guardando progreso" });
+  }
+}
+
 async function rateMovie(req, res) {
   try {
     const puntuacion = Number(req.body?.puntuacion);
@@ -174,6 +303,10 @@ module.exports = {
   getSeriesEpisodes,
   streamMovie,
   streamEpisode,
+  getMovieProgress,
+  getEpisodeProgress,
+  updateMovieProgress,
+  updateEpisodeProgress,
   rateMovie,
   rateEpisode,
 };

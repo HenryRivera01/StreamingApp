@@ -273,6 +273,60 @@ body.dark {
   gap: 18px;
 }
 
+.stats-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  margin-top: 12px;
+}
+
+.stat-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-value {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.stat-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.summary-columns {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.list-compact {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.list-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
 @media (min-width: 900px) {
   .grid-two {
     grid-template-columns: 2fr 1.2fr;
@@ -613,4 +667,28 @@ video {
   margin-left: 10px;
   font-size: 0.85rem;
   color: #9ca3af;
+}
+
+/* Resume modal styles */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.6);
+  z-index: 2000;
+}
+.modal.hidden {
+  display: none;
+}
+.modal .modal-dialog {
+  width: 100%;
+  max-width: 640px;
+  padding: 16px;
+  border-radius: 12px;
+}
+.modal p {
+  font-size: 1rem;
+  color: var(--text);
 }

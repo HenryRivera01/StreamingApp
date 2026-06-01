@@ -43,6 +43,7 @@ async function runQuery() {
     const content = data.contenido_por_genero || [];
     const duration = data.duracion_peliculas || {};
     const activeUsers = data.usuarios_mas_activos || [];
+    const withoutViews = data.peliculas_sin_reproducciones || [];
 
     resDiv.innerHTML = `
       <div class="panel" style="margin-bottom:12px;">
@@ -57,6 +58,12 @@ async function runQuery() {
       <div class="panel" style="margin-bottom:12px;">
         <h3>Duración de películas</h3>
         <p>Promedio: ${duration.promedio_peliculas ?? "n/d"} | Máxima: ${duration.max_pelicula ?? "n/d"} | Mínima: ${duration.min_pelicula ?? "n/d"}</p>
+      </div>
+      <div class="panel" style="margin-bottom:12px;">
+        <h3>Películas sin reproducciones</h3>
+        <ul class="list-compact">
+          ${withoutViews.map((row) => `<li class="list-item">${row.titulo ?? "Sin título"}</li>`).join("") || '<li class="list-item">Sin datos</li>'}
+        </ul>
       </div>
       <div class="panel">
         <h3>Usuarios más activos</h3>
@@ -79,7 +86,11 @@ function initAnalytics() {
   if (document.getElementById("btnLogout")) {
     document.getElementById("btnLogout").addEventListener("click", logout);
   }
-  document.getElementById("btnRun").addEventListener("click", runQuery);
+  const btnRun = document.getElementById("btnRun");
+  if (btnRun) {
+    btnRun.addEventListener("click", runQuery);
+    runQuery();
+  }
 }
 
 window.addEventListener("DOMContentLoaded", initAnalytics);

@@ -11,7 +11,7 @@
 - Password: User123!
 
 - Email: maria@email.com
-- Password: User123!
+- Password: User123!  
 
 - Email: juan@email.com
 - Password: User123!
